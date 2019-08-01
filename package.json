@@ -9,7 +9,8 @@
     "start": "node index.js",
     "build:ui": "rm -rf build && cd ../../fliso/projects/mooc/phonebook && npm run build --prod && cp -r build ../../fliso/projects/mooc/phonebook-backend",
     "deploy": "git push heroku-proper master",
-    "deploy:full": "npm run build:ui && git add . && git commit -m uibuild && git push && npm run deploy"
+    "deploy:full": "npm run build:ui && git add . && git commit -m uibuild && git push && npm run deploy",
+    "lint": "eslint ."
   },
   "author": "szymsi",
   "license": "ISC",
@@ -21,6 +22,8 @@
     "mongoose-unique-validator": "^2.0.3"
   },
   "devDependencies": {
+    "eslint": "^6.1.0",
+    "eslint-plugin-react": "^7.14.3",
     "nodemon": "^1.19.1"
   }
 }
