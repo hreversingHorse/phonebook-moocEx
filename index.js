@@ -1,9 +1,10 @@
+require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const app = express()
 app.use(bodyParser.json())
-
+app.use(express.static('build'))
 const requestLogger = (request, response, next) => {
     console.log("Method:",request.method)
     console.log("Path:  ",request.path)
@@ -11,83 +12,79 @@ const requestLogger = (request, response, next) => {
     console.log('---')
     next()
 }
+const Contact = require('./models/contact')
+
+// const errorHandler = (error,request,response,next) => {
+    
+//     if (error.name === 'CastError' && error.kind === 'ObjectId'){
+//         return response.status(400).send({error: 'malformatted id'})
+//     } else if (error.name === 'ValidationError'){
+//         return response.status(422).json({error: "i got here "})
+//     }
+//     next(error)
+// }
 
 app.use(requestLogger)
-
-let numbers = [
-    {
-        name: "Arto Hellas",
-        number: "032-992",
-        id: 1
-    },
-    {
-        name: "Ada Lovelace",
-        number: "0321-22",
-        id: 2
-    },
-    {
-        name: "Dan Abramov",
-        number: "12340-9832",
-        id: 3
-    },
-    {
-        name: "Arto Hellas",
-        number: "032-9927213",
-        id: 4
-    },
-]
+// app.use(errorHandler)
 
 app.get('/api/persons', (request, response) => {
-    response.json(numbers)
+    Contact.find({}).then(contacts => {
+        response.json(contacts)
+    })
 })
 
 app.get('/info', (request, response) => {
     const time = new Date()
     response.send("<h2>Phonebook has info for "
-        + numbers.length 
+        + Contact.length 
         +" people</h2>"
         + time)
 })
 
 app.get('/api/persons/:id', (request,response) => {
-    const id = Number(request.params.id)
-    const person = numbers.find(person => person.id === id)
-    if (person) {
-        response.json(person)
-    } else {
-        response.status(404).end()
-    }
+    Contact.findById(request.params.id)
+        .then(contact => {
+            if (contact){
+                response.json(contact.toJSON())
+            } else {
+                response.status(404).end()
+            }
+        })
+        .catch(error => {
+            if (error.name === 'CastError' && error.kind === 'ObjectId'){
+                return response.status(400).send({error: 'malformatted id'})
+            }
+        })
 })
 
-app.delete('/api/persons/:id', (request,response) => {
-    const id = Number(request.params.id)
-    numbers = numbers.filter(number => number.id !== id)
-    response.status(204).end()
+app.delete('/api/persons/:id', (request,response,next) => { 
+    Contact.findByIdAndDelete(request.params.id)
+        .then(result => {
+            response.status(204).end()
+        })
+        .catch(error => {
+            if (error.name === 'CastError' && error.kind === 'ObjectId'){
+                return response.status(400).send({error: 'malformatted id'})
+            }
+        })
 })
 
-app.post('/api/persons', (request,response) => {
+app.post('/api/persons', (request,response,next) => {
     const body = request.body
-    const doesExist = numbers.find(number => number.name === body.name)
-    if (!body.name || !body.number){
-        return response.status(400).json({
-            error: "content missing"
-        })
-    }
-    if (doesExist){
-        return response.status(400).json({
-            error: "number already exists"
-        })
-    }
-    
-    const newEntry = {
+
+    const newContact = new Contact({
         name: body.name,
         number: body.number,
-        id: Math.floor(Math.random()*(23847612) + 1)
-    }
+    })
 
-    numbers = numbers.concat(newEntry)
-
-    response.json(newEntry)
+    newContact.save()
+        .then(savedContact => {
+            response.json(savedContact.toJSON())
+    }).catch(error => {
+        if (error.name === 'ValidationError'){
+            response.status(422).json({error: error.message})
+        }
+    })
 })
 
 const PORT = process.env.PORT || 3001
